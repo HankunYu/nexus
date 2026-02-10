@@ -3,7 +3,8 @@
   "rootNamespace": "Nexus.Networking",
   "references": [
     "Mirror",
-    "Mirror.Transports"
+    "Mirror.Transports",
+    "Mirror.Components"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

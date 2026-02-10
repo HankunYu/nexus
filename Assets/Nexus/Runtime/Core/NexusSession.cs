@@ -214,5 +214,38 @@ namespace Nexus.Networking.Core
                 SetState(SessionState.Disconnected);
             }
         }
+
+        /// <summary>
+        /// Called by ReconnectHandler to update session state during reconnection.
+        /// </summary>
+        public void SetReconnecting()
+        {
+            if (_state == SessionState.Disconnected)
+            {
+                SetState(SessionState.Reconnecting);
+            }
+        }
+
+        /// <summary>
+        /// Called by ReconnectHandler when reconnection succeeds.
+        /// </summary>
+        public void SetReconnected()
+        {
+            if (_state == SessionState.Reconnecting)
+            {
+                SetState(SessionState.InRoom);
+            }
+        }
+
+        /// <summary>
+        /// Called by ReconnectHandler when all reconnection attempts fail.
+        /// </summary>
+        public void SetReconnectFailed()
+        {
+            if (_state == SessionState.Reconnecting)
+            {
+                LeaveRoom();
+            }
+        }
     }
 }

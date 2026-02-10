@@ -1,0 +1,190 @@
+using System;
+using System.Collections.Generic;
+using Mirror;
+using Nexus.Networking.Core;
+using UnityEngine;
+
+namespace Nexus.Networking.Local
+{
+    /// <summary>
+    /// LAN room manager. Coordinates LocalTransport for room lifecycle
+    /// and tracks connected players via Mirror server events.
+    /// </summary>
+    public class LocalRoomManager : MonoBehaviour, INexusRoomManager
+    {
+        private INexusTransport _transport;
+        private NexusConfig _config;
+        private RoomState _currentState = RoomState.Idle;
+        private RoomInfo _currentRoom;
+        private readonly List<NexusPlayer> _players = new List<NexusPlayer>();
+
+        public RoomState CurrentState => _currentState;
+        public RoomInfo CurrentRoom => _currentRoom;
+        public IReadOnlyList<NexusPlayer> Players => _players;
+
+        public event Action<NexusPlayer> OnPlayerJoined;
+        public event Action<NexusPlayer> OnPlayerLeft;
+        public event Action<RoomInfo> OnRoomCreated;
+        public event Action OnRoomJoined;
+        public event Action OnRoomLeft;
+
+        public void Initialize(INexusTransport transport, NexusConfig config)
+        {
+            _transport = transport;
+            _config = config;
+
+            _transport.OnClientConnected += HandleClientConnected;
+            _transport.OnClientDisconnected += HandleClientDisconnected;
+        }
+
+        private void OnDestroy()
+        {
+            if (_transport != null)
+            {
+                _transport.OnClientConnected -= HandleClientConnected;
+                _transport.OnClientDisconnected -= HandleClientDisconnected;
+            }
+        }
+
+        public void CreateRoom(RoomConfig config)
+        {
+            if (_currentState != RoomState.Idle)
+            {
+                Debug.LogWarning($"[LocalRoomManager] Cannot create room in state {_currentState}.");
+                return;
+            }
+
+            SetState(RoomState.Creating);
+
+            _currentRoom = new RoomInfo
+            {
+                RoomId = Guid.NewGuid().ToString(),
+                RoomName = config.RoomName,
+                Port = config.Port,
+                MaxPlayers = config.MaxPlayers,
+                CurrentPlayers = 1,
+                Metadata = config.Metadata ?? new Dictionary<string, string>()
+            };
+
+            _transport.StartHost(config.Port);
+
+            // Add local host player
+            var hostPlayer = new NexusPlayer
+            {
+                ConnectionId = 0,
+                PlayerId = Guid.NewGuid().ToString(),
+                DisplayName = "Host",
+                IsHost = true,
+                IsLocal = true
+            };
+            _players.Add(hostPlayer);
+
+            SetState(RoomState.InRoom);
+
+            Debug.Log($"[LocalRoomManager] Room created: {_currentRoom.RoomName} (ID: {_currentRoom.RoomId})");
+            OnRoomCreated?.Invoke(_currentRoom);
+            OnPlayerJoined?.Invoke(hostPlayer);
+        }
+
+        public void JoinRoom(RoomInfo room)
+        {
+            if (_currentState != RoomState.Idle)
+            {
+                Debug.LogWarning($"[LocalRoomManager] Cannot join room in state {_currentState}.");
+                return;
+            }
+
+            SetState(RoomState.Joining);
+
+            _currentRoom = room;
+            _transport.StartClient(room.HostAddress, room.Port);
+
+            // Add local client player
+            var localPlayer = new NexusPlayer
+            {
+                ConnectionId = -1, // Updated when server confirms
+                PlayerId = Guid.NewGuid().ToString(),
+                DisplayName = "Player",
+                IsHost = false,
+                IsLocal = true
+            };
+            _players.Add(localPlayer);
+
+            SetState(RoomState.InRoom);
+
+            Debug.Log($"[LocalRoomManager] Joined room: {room.RoomName} at {room.HostAddress}:{room.Port}");
+            OnRoomJoined?.Invoke();
+            OnPlayerJoined?.Invoke(localPlayer);
+        }
+
+        public void LeaveRoom()
+        {
+            if (_currentState == RoomState.Idle)
+            {
+                return;
+            }
+
+            _transport.Stop();
+            _players.Clear();
+            _currentRoom = null;
+
+            SetState(RoomState.Idle);
+
+            Debug.Log("[LocalRoomManager] Left room.");
+            OnRoomLeft?.Invoke();
+        }
+
+        private void HandleClientConnected(int connectionId)
+        {
+            // Server-side: a remote client connected
+            if (_currentRoom == null)
+            {
+                return;
+            }
+
+            var player = new NexusPlayer
+            {
+                ConnectionId = connectionId,
+                PlayerId = Guid.NewGuid().ToString(),
+                DisplayName = $"Player {connectionId}",
+                IsHost = false,
+                IsLocal = false
+            };
+
+            _players.Add(player);
+            _currentRoom.CurrentPlayers = _players.Count;
+
+            Debug.Log($"[LocalRoomManager] Player connected: {player.DisplayName} (conn: {connectionId})");
+            OnPlayerJoined?.Invoke(player);
+        }
+
+        private void HandleClientDisconnected(int connectionId)
+        {
+            NexusPlayer player = _players.Find(p => p.ConnectionId == connectionId);
+            if (player == null)
+            {
+                return;
+            }
+
+            _players.Remove(player);
+
+            if (_currentRoom != null)
+            {
+                _currentRoom.CurrentPlayers = _players.Count;
+            }
+
+            Debug.Log($"[LocalRoomManager] Player disconnected: {player.DisplayName} (conn: {connectionId})");
+            OnPlayerLeft?.Invoke(player);
+        }
+
+        private void SetState(RoomState newState)
+        {
+            if (_currentState == newState)
+            {
+                return;
+            }
+
+            _currentState = newState;
+        }
+    }
+}
