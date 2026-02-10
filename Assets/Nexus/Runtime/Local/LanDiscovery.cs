@@ -14,17 +14,32 @@ namespace Nexus.Networking.Local
     public class LanDiscovery : NetworkDiscoveryBase<NexusDiscoveryRequest, NexusDiscoveryResponse>,
         INexusDiscovery
     {
+        // Private fields
         private readonly Dictionary<string, RoomInfo> _discoveredRooms = new Dictionary<string, RoomInfo>();
-
         private RoomInfo _broadcastRoom;
         private float _roomTimeout = 5f;
         private bool _isListening;
 
+        // Public properties
         public bool IsActive => serverUdpClient != null || _isListening;
+        public IReadOnlyDictionary<string, RoomInfo> DiscoveredRooms => _discoveredRooms;
 
+        // Events
         public event Action<RoomInfo> OnRoomFound;
         public event Action<RoomInfo> OnRoomLost;
 
+        // Unity callbacks
+        private void Update()
+        {
+            if (!_isListening)
+            {
+                return;
+            }
+
+            CleanupTimedOutRooms();
+        }
+
+        // Public methods
         /// <summary>
         /// Configure discovery parameters. Call before StartBroadcast/StartListening.
         /// Port is set via protected base field; interval is set via inspector.
@@ -59,16 +74,7 @@ namespace Nexus.Networking.Local
             Debug.Log("[LanDiscovery] Stopped.");
         }
 
-        private void Update()
-        {
-            if (!_isListening)
-            {
-                return;
-            }
-
-            CleanupTimedOutRooms();
-        }
-
+        // Protected overrides (Mirror)
         protected override NexusDiscoveryResponse ProcessRequest(
             NexusDiscoveryRequest request,
             IPEndPoint endpoint)
@@ -124,6 +130,7 @@ namespace Nexus.Networking.Local
             }
         }
 
+        // Private methods
         private void CleanupTimedOutRooms()
         {
             long now = DateTime.UtcNow.Ticks;
@@ -152,7 +159,5 @@ namespace Nexus.Networking.Local
                 OnRoomLost?.Invoke(room);
             }
         }
-
-        public IReadOnlyDictionary<string, RoomInfo> DiscoveredRooms => _discoveredRooms;
     }
 }

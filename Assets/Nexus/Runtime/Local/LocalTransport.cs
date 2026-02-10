@@ -1,7 +1,7 @@
 using System;
 using Mirror;
-using UnityEngine;
 using Nexus.Networking.Core;
+using UnityEngine;
 using NetworkMode = Nexus.Networking.Core.NetworkMode;
 
 namespace Nexus.Networking.Local
@@ -13,17 +13,21 @@ namespace Nexus.Networking.Local
     [RequireComponent(typeof(NetworkManager))]
     public class LocalTransport : MonoBehaviour, INexusTransport
     {
+        // Private fields
         private NetworkManager _networkManager;
         private NetworkMode _mode = NetworkMode.None;
 
+        // Public properties
         public bool IsActive => _networkManager != null && _networkManager.isNetworkActive;
         public NetworkMode Mode => _mode;
 
+        // Events
         public event Action OnStarted;
         public event Action OnStopped;
         public event Action<int> OnClientConnected;
         public event Action<int> OnClientDisconnected;
 
+        // Unity callbacks
         private void Awake()
         {
             _networkManager = GetComponent<NetworkManager>();
@@ -31,7 +35,6 @@ namespace Nexus.Networking.Local
 
         private void OnEnable()
         {
-            // Subscribe to Mirror's static events
             NetworkServer.OnConnectedEvent += HandleServerConnected;
             NetworkServer.OnDisconnectedEvent += HandleServerDisconnected;
         }
@@ -42,6 +45,7 @@ namespace Nexus.Networking.Local
             NetworkServer.OnDisconnectedEvent -= HandleServerDisconnected;
         }
 
+        // Public methods
         public void StartHost(int port)
         {
             if (IsActive)
@@ -117,9 +121,9 @@ namespace Nexus.Networking.Local
             OnStopped?.Invoke();
         }
 
+        // Private methods
         private void ConfigureTransport(int port)
         {
-            // KcpTransport is expected to be on the same GameObject or set as Mirror's active transport
             if (Transport.active is kcp2k.KcpTransport kcpTransport)
             {
                 kcpTransport.port = (ushort)port;

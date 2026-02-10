@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Mirror;
 using Nexus.Networking.Core;
 using UnityEngine;
 
@@ -12,31 +11,26 @@ namespace Nexus.Networking.Local
     /// </summary>
     public class LocalRoomManager : MonoBehaviour, INexusRoomManager
     {
+        // Private fields
         private INexusTransport _transport;
         private NexusConfig _config;
         private RoomState _currentState = RoomState.Idle;
         private RoomInfo _currentRoom;
         private readonly List<NexusPlayer> _players = new List<NexusPlayer>();
 
+        // Public properties
         public RoomState CurrentState => _currentState;
         public RoomInfo CurrentRoom => _currentRoom;
         public IReadOnlyList<NexusPlayer> Players => _players;
 
+        // Events
         public event Action<NexusPlayer> OnPlayerJoined;
         public event Action<NexusPlayer> OnPlayerLeft;
         public event Action<RoomInfo> OnRoomCreated;
         public event Action OnRoomJoined;
         public event Action OnRoomLeft;
 
-        public void Initialize(INexusTransport transport, NexusConfig config)
-        {
-            _transport = transport;
-            _config = config;
-
-            _transport.OnClientConnected += HandleClientConnected;
-            _transport.OnClientDisconnected += HandleClientDisconnected;
-        }
-
+        // Unity callbacks
         private void OnDestroy()
         {
             if (_transport != null)
@@ -44,6 +38,16 @@ namespace Nexus.Networking.Local
                 _transport.OnClientConnected -= HandleClientConnected;
                 _transport.OnClientDisconnected -= HandleClientDisconnected;
             }
+        }
+
+        // Public methods
+        public void Initialize(INexusTransport transport, NexusConfig config)
+        {
+            _transport = transport;
+            _config = config;
+
+            _transport.OnClientConnected += HandleClientConnected;
+            _transport.OnClientDisconnected += HandleClientDisconnected;
         }
 
         public void CreateRoom(RoomConfig config)
@@ -68,7 +72,6 @@ namespace Nexus.Networking.Local
 
             _transport.StartHost(config.Port);
 
-            // Add local host player
             var hostPlayer = new NexusPlayer
             {
                 ConnectionId = 0,
@@ -99,10 +102,9 @@ namespace Nexus.Networking.Local
             _currentRoom = room;
             _transport.StartClient(room.HostAddress, room.Port);
 
-            // Add local client player
             var localPlayer = new NexusPlayer
             {
-                ConnectionId = -1, // Updated when server confirms
+                ConnectionId = -1,
                 PlayerId = Guid.NewGuid().ToString(),
                 DisplayName = "Player",
                 IsHost = false,
@@ -134,9 +136,9 @@ namespace Nexus.Networking.Local
             OnRoomLeft?.Invoke();
         }
 
+        // Private methods
         private void HandleClientConnected(int connectionId)
         {
-            // Server-side: a remote client connected
             if (_currentRoom == null)
             {
                 return;

@@ -11,6 +11,7 @@ namespace Nexus.Networking.Local
     /// </summary>
     public class ReconnectHandler : MonoBehaviour
     {
+        // Private fields
         private INexusTransport _transport;
         private INexusRoomManager _roomManager;
         private NexusConfig _config;
@@ -19,23 +20,16 @@ namespace Nexus.Networking.Local
         private bool _isReconnecting;
         private Coroutine _reconnectCoroutine;
 
+        // Public properties
         public bool IsReconnecting => _isReconnecting;
         public int AttemptCount => _attemptCount;
 
+        // Events
         public event Action OnReconnectStarted;
         public event Action OnReconnectSucceeded;
         public event Action OnReconnectFailed;
 
-        public void Initialize(INexusTransport transport, INexusRoomManager roomManager, NexusConfig config)
-        {
-            _transport = transport;
-            _roomManager = roomManager;
-            _config = config;
-
-            _transport.OnStopped += HandleTransportStopped;
-            _transport.OnStarted += HandleTransportStarted;
-        }
-
+        // Unity callbacks
         private void OnDestroy()
         {
             if (_transport != null)
@@ -47,9 +41,20 @@ namespace Nexus.Networking.Local
             StopReconnect();
         }
 
+        // Public methods
+        public void Initialize(INexusTransport transport, INexusRoomManager roomManager, NexusConfig config)
+        {
+            _transport = transport;
+            _roomManager = roomManager;
+            _config = config;
+
+            _transport.OnStopped += HandleTransportStopped;
+            _transport.OnStarted += HandleTransportStarted;
+        }
+
+        // Private methods
         private void HandleTransportStopped()
         {
-            // Only attempt reconnect if we were a client in a room
             if (_roomManager.CurrentState != RoomState.InRoom)
             {
                 return;
@@ -142,12 +147,10 @@ namespace Nexus.Networking.Local
 
                 if (!_isReconnecting)
                 {
-                    // HandleTransportStarted was called — reconnect succeeded
                     yield break;
                 }
             }
 
-            // All attempts exhausted
             _isReconnecting = false;
             Debug.LogWarning("[ReconnectHandler] Reconnection failed after all attempts.");
             OnReconnectFailed?.Invoke();

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Nexus.Networking.Core
@@ -10,23 +9,27 @@ namespace Nexus.Networking.Core
     /// </summary>
     public class NexusSession : MonoBehaviour
     {
+        // Serialized fields
         [SerializeField] private NexusConfig _config;
 
+        // Private fields
         private INexusTransport _transport;
         private INexusDiscovery _discovery;
         private INexusRoomManager _roomManager;
         private SessionState _state = SessionState.Idle;
 
+        // Public properties
         public static NexusSession Instance { get; private set; }
-
         public NexusConfig Config => _config;
         public INexusTransport Transport => _transport;
         public INexusDiscovery Discovery => _discovery;
         public INexusRoomManager RoomManager => _roomManager;
         public SessionState State => _state;
 
+        // Events
         public event Action<SessionState> OnStateChanged;
 
+        // Unity callbacks
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -48,10 +51,7 @@ namespace Nexus.Networking.Core
             }
         }
 
-        /// <summary>
-        /// Initialize the session with the specified implementations.
-        /// Call this before any networking operations.
-        /// </summary>
+        // Public methods
         public void Initialize(
             INexusTransport transport,
             INexusDiscovery discovery,
@@ -66,9 +66,6 @@ namespace Nexus.Networking.Core
             Debug.Log($"[NexusSession] Initialized in {_config.Mode} mode.");
         }
 
-        /// <summary>
-        /// Create and host a new room.
-        /// </summary>
         public void CreateRoom(string roomName = null)
         {
             if (_state != SessionState.Idle)
@@ -89,9 +86,6 @@ namespace Nexus.Networking.Core
             _roomManager.CreateRoom(config);
         }
 
-        /// <summary>
-        /// Join an existing room.
-        /// </summary>
         public void JoinRoom(RoomInfo room)
         {
             if (_state != SessionState.Idle)
@@ -104,9 +98,6 @@ namespace Nexus.Networking.Core
             _roomManager.JoinRoom(room);
         }
 
-        /// <summary>
-        /// Leave the current room and return to idle state.
-        /// </summary>
         public void LeaveRoom()
         {
             if (_state == SessionState.Idle)
@@ -121,25 +112,16 @@ namespace Nexus.Networking.Core
             SetState(SessionState.Idle);
         }
 
-        /// <summary>
-        /// Start listening for available rooms.
-        /// </summary>
         public void StartDiscovery()
         {
             _discovery.StartListening();
         }
 
-        /// <summary>
-        /// Stop listening for available rooms.
-        /// </summary>
         public void StopDiscovery()
         {
             _discovery.Stop();
         }
 
-        /// <summary>
-        /// Shut down all networking activity.
-        /// </summary>
         public void Shutdown()
         {
             _discovery?.Stop();
@@ -148,6 +130,31 @@ namespace Nexus.Networking.Core
             SetState(SessionState.Idle);
         }
 
+        public void SetReconnecting()
+        {
+            if (_state == SessionState.Disconnected)
+            {
+                SetState(SessionState.Reconnecting);
+            }
+        }
+
+        public void SetReconnected()
+        {
+            if (_state == SessionState.Reconnecting)
+            {
+                SetState(SessionState.InRoom);
+            }
+        }
+
+        public void SetReconnectFailed()
+        {
+            if (_state == SessionState.Reconnecting)
+            {
+                LeaveRoom();
+            }
+        }
+
+        // Private methods
         private void SetState(SessionState newState)
         {
             if (_state == newState)
@@ -188,10 +195,7 @@ namespace Nexus.Networking.Core
         private void HandleRoomCreated(RoomInfo room)
         {
             SetState(SessionState.Hosting);
-
-            // Start broadcasting the room for discovery
             _discovery.StartBroadcast(room);
-
             SetState(SessionState.InRoom);
         }
 
@@ -208,43 +212,9 @@ namespace Nexus.Networking.Core
 
         private void HandleClientDisconnected(int connectionId)
         {
-            // Only handle our own disconnection (connectionId 0 is local client)
             if (_state == SessionState.InRoom && connectionId == 0)
             {
                 SetState(SessionState.Disconnected);
-            }
-        }
-
-        /// <summary>
-        /// Called by ReconnectHandler to update session state during reconnection.
-        /// </summary>
-        public void SetReconnecting()
-        {
-            if (_state == SessionState.Disconnected)
-            {
-                SetState(SessionState.Reconnecting);
-            }
-        }
-
-        /// <summary>
-        /// Called by ReconnectHandler when reconnection succeeds.
-        /// </summary>
-        public void SetReconnected()
-        {
-            if (_state == SessionState.Reconnecting)
-            {
-                SetState(SessionState.InRoom);
-            }
-        }
-
-        /// <summary>
-        /// Called by ReconnectHandler when all reconnection attempts fail.
-        /// </summary>
-        public void SetReconnectFailed()
-        {
-            if (_state == SessionState.Reconnecting)
-            {
-                LeaveRoom();
             }
         }
     }

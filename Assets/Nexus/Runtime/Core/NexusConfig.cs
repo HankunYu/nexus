@@ -9,6 +9,7 @@ namespace Nexus.Networking.Core
     [CreateAssetMenu(fileName = "NexusConfig", menuName = "Nexus/Network Config")]
     public class NexusConfig : ScriptableObject
     {
+        // Serialized fields
         [Header("General")]
         [SerializeField] private NexusMode _mode = NexusMode.Local;
         [SerializeField] private int _port = 7777;
@@ -29,6 +30,7 @@ namespace Nexus.Networking.Core
         [Header("Remote")]
         [SerializeField] private string _relayServerUrl = "";
 
+        // Public properties
         public NexusMode Mode => _mode;
         public int Port => _port;
         public int MaxPlayers => _maxPlayers;
