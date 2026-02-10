@@ -1,0 +1,27 @@
+{
+  "name": "com.nexus.networking",
+  "version": "0.1.0",
+  "displayName": "Nexus Networking",
+  "description": "VR multiplayer networking framework built on Mirror. Supports LAN and remote connectivity with Quest + PCVR cross-platform.",
+  "unity": "6000.2",
+  "dependencies": {
+    "com.mirrornetworking.mirror": "96.6.4"
+  },
+  "keywords": [
+    "networking",
+    "multiplayer",
+    "vr",
+    "mirror",
+    "lan"
+  ],
+  "author": {
+    "name": "Hankun"
+  },
+  "samples": [
+    {
+      "displayName": "VR Multiplayer Demo",
+      "description": "End-to-end VR multiplayer demo scene with room discovery, connection management, and player sync.",
+      "path": "Samples~/VRMultiplayerDemo"
+    }
+  ]
+}
