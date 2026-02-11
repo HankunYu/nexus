@@ -87,7 +87,7 @@ namespace Nexus.Calibration.Meta
                 // 2. Share to a new group
                 var groupUuid = Guid.NewGuid();
                 var shareResult = await _anchor.ShareAsync(groupUuid);
-                if (!shareResult.IsSuccess())
+                if (!shareResult.Success)
                 {
                     Fail($"Anchor share failed: {shareResult.Status}");
                     return;
@@ -126,7 +126,7 @@ namespace Nexus.Calibration.Meta
                     var loadResult = await OVRSpatialAnchor.LoadUnboundSharedAnchorsAsync(
                         data.GroupUuid, new[] { data.AnchorUuid }, unboundAnchors);
 
-                    if (loadResult.IsSuccess() && unboundAnchors.Count > 0)
+                    if (loadResult.Success && unboundAnchors.Count > 0)
                     {
                         loaded = true;
                         break;
