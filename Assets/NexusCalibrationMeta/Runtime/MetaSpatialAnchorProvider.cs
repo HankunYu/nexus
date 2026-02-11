@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using Nexus.Networking.VR.Calibration;
 using UnityEngine;
 #if META_XR_SDK
@@ -25,6 +26,7 @@ namespace Nexus.Calibration.Meta
         private OVRSpatialAnchor _anchor;
         private GameObject _clientAnchorObject;
 #endif
+        private CancellationTokenSource _cts;
 
         // Public properties
         public CalibrationState State { get; private set; }
@@ -44,8 +46,10 @@ namespace Nexus.Calibration.Meta
         public void StartCalibration()
         {
 #if META_XR_SDK
+            CancelInFlight();
+            _cts = new CancellationTokenSource();
             State = CalibrationState.InProgress;
-            CreateAndShareAnchor();
+            CreateAndShareAnchor(_cts.Token);
 #else
             Fail("Meta XR SDK not available. Install com.meta.xr.sdk.core.");
 #endif
@@ -58,8 +62,10 @@ namespace Nexus.Calibration.Meta
         public void LoadSharedAnchor(AnchorShareData data)
         {
 #if META_XR_SDK
+            CancelInFlight();
+            _cts = new CancellationTokenSource();
             State = CalibrationState.InProgress;
-            LocalizeSharedAnchor(data);
+            LocalizeSharedAnchor(data, _cts.Token);
 #else
             Fail("Meta XR SDK not available. Install com.meta.xr.sdk.core.");
 #endif
@@ -67,17 +73,30 @@ namespace Nexus.Calibration.Meta
 
         public void CancelCalibration()
         {
+            CancelInFlight();
             State = CalibrationState.None;
         }
 
+        private void CancelInFlight()
+        {
+            if (_cts != null)
+            {
+                _cts.Cancel();
+                _cts.Dispose();
+                _cts = null;
+            }
+        }
+
 #if META_XR_SDK
-        private async void CreateAndShareAnchor()
+        private async void CreateAndShareAnchor(CancellationToken ct)
         {
             try
             {
                 // 1. Create spatial anchor at current position
                 _anchor = gameObject.AddComponent<OVRSpatialAnchor>();
                 bool localized = await _anchor.WhenLocalizedAsync();
+                if (ct.IsCancellationRequested || this == null) return;
+
                 if (!localized)
                 {
                     Fail("Spatial anchor creation/localization failed.");
@@ -87,6 +106,8 @@ namespace Nexus.Calibration.Meta
                 // 2. Share to a new group
                 var groupUuid = Guid.NewGuid();
                 var shareResult = await _anchor.ShareAsync(groupUuid);
+                if (ct.IsCancellationRequested || this == null) return;
+
                 if (!shareResult.Success)
                 {
                     Fail($"Anchor share failed: {shareResult.Status}");
@@ -108,11 +129,14 @@ namespace Nexus.Calibration.Meta
             }
             catch (Exception e)
             {
-                Fail($"Anchor creation exception: {e.Message}");
+                if (this != null && !ct.IsCancellationRequested)
+                {
+                    Fail($"Anchor creation exception: {e.Message}");
+                }
             }
         }
 
-        private async void LocalizeSharedAnchor(AnchorShareData data)
+        private async void LocalizeSharedAnchor(AnchorShareData data, CancellationToken ct)
         {
             try
             {
@@ -122,9 +146,12 @@ namespace Nexus.Calibration.Meta
 
                 for (int attempt = 0; attempt <= _maxRetries; attempt++)
                 {
+                    if (ct.IsCancellationRequested || this == null) return;
+
                     unboundAnchors.Clear();
                     var loadResult = await OVRSpatialAnchor.LoadUnboundSharedAnchorsAsync(
                         data.GroupUuid, new[] { data.AnchorUuid }, unboundAnchors);
+                    if (ct.IsCancellationRequested || this == null) return;
 
                     if (loadResult.Success && unboundAnchors.Count > 0)
                     {
@@ -135,7 +162,7 @@ namespace Nexus.Calibration.Meta
                     if (attempt < _maxRetries)
                     {
                         Debug.Log($"[MetaSpatialAnchorProvider] Anchor not found, retrying ({attempt + 1}/{_maxRetries})...");
-                        await Task.Delay((int)(_retryDelaySeconds * 1000));
+                        await Task.Delay((int)(_retryDelaySeconds * 1000), ct);
                     }
                 }
 
@@ -165,6 +192,8 @@ namespace Nexus.Calibration.Meta
                 }
 
                 bool localizeSuccess = await target.LocalizeAsync(_anchorTimeoutSeconds);
+                if (ct.IsCancellationRequested || this == null) return;
+
                 if (!localizeSuccess)
                 {
                     Fail("Anchor localization timed out.");
@@ -177,6 +206,8 @@ namespace Nexus.Calibration.Meta
                 target.BindTo(spatialAnchor);
 
                 bool anchorLocalized = await spatialAnchor.WhenLocalizedAsync();
+                if (ct.IsCancellationRequested || this == null) return;
+
                 if (!anchorLocalized)
                 {
                     Fail("Bound anchor failed to localize.");
@@ -193,9 +224,16 @@ namespace Nexus.Calibration.Meta
                 State = CalibrationState.Calibrated;
                 OnCalibrationComplete?.Invoke(calibration);
             }
+            catch (OperationCanceledException)
+            {
+                // Expected when CancelCalibration() is called during retry delay
+            }
             catch (Exception e)
             {
-                Fail($"Anchor localization exception: {e.Message}");
+                if (this != null && !ct.IsCancellationRequested)
+                {
+                    Fail($"Anchor localization exception: {e.Message}");
+                }
             }
         }
 #endif
@@ -246,11 +284,19 @@ namespace Nexus.Calibration.Meta
 
         private void OnDestroy()
         {
+            CancelInFlight();
+
 #if META_XR_SDK
-            // Clean up client-side anchor object if created
+            if (_anchor != null)
+            {
+                Destroy(_anchor);
+                _anchor = null;
+            }
+
             if (_clientAnchorObject != null)
             {
                 Destroy(_clientAnchorObject);
+                _clientAnchorObject = null;
             }
 #endif
         }

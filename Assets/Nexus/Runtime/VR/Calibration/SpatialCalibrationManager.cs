@@ -29,6 +29,16 @@ namespace Nexus.Networking.VR.Calibration
         public event Action<CalibrationData> OnCalibrationComplete;
 
         // Unity callbacks
+        private void Update()
+        {
+            // Auto-register network handlers when Mirror becomes active
+            if (!_networkHandlersRegistered && _provider != null &&
+                (NetworkServer.active || NetworkClient.active))
+            {
+                RegisterNetworkHandlers();
+            }
+        }
+
         private void OnDestroy()
         {
             if (_provider != null)
@@ -299,6 +309,12 @@ namespace Nexus.Networking.VR.Calibration
 
         private void OnClientReceivedAnchorShare(AnchorShareMessage msg)
         {
+            // Host already calibrated as Identity; skip anchor load on host
+            if (NetworkServer.active)
+            {
+                return;
+            }
+
             if (_provider is IAnchorCalibrationProvider anchorProvider)
             {
                 var data = new AnchorShareData
