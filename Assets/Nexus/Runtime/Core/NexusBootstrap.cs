@@ -13,6 +13,10 @@ namespace Nexus.Networking.Core
     [RequireComponent(typeof(NexusSession))]
     public class NexusBootstrap : MonoBehaviour
     {
+        [Header("Calibration")]
+        [Tooltip("Optional: assign a MonoBehaviour implementing ICalibrationProvider (e.g. MetaSpatialAnchorProvider). If empty, defaults to ManualCalibrationProvider.")]
+        [SerializeField] private MonoBehaviour _calibrationProviderOverride;
+
         private void Start()
         {
             var session = GetComponent<NexusSession>();
@@ -79,10 +83,26 @@ namespace Nexus.Networking.Core
 
             // Wire spatial calibration manager
             var calibrationManager = GetOrAddComponent<SpatialCalibrationManager>();
-            var manualCalibration = new ManualCalibrationProvider();
-            calibrationManager.Initialize(manualCalibration, vrPlayerManager);
+            ICalibrationProvider calibrationProvider = ResolveCalibrationProvider();
+            calibrationManager.Initialize(calibrationProvider, vrPlayerManager);
 
             Debug.Log("[NexusBootstrap] Local mode initialized.");
+        }
+
+        private ICalibrationProvider ResolveCalibrationProvider()
+        {
+            if (_calibrationProviderOverride != null)
+            {
+                if (_calibrationProviderOverride is ICalibrationProvider provider)
+                {
+                    Debug.Log($"[NexusBootstrap] Using calibration provider: {_calibrationProviderOverride.GetType().Name}");
+                    return provider;
+                }
+
+                Debug.LogWarning($"[NexusBootstrap] {_calibrationProviderOverride.GetType().Name} does not implement ICalibrationProvider. Falling back to ManualCalibrationProvider.");
+            }
+
+            return new ManualCalibrationProvider();
         }
 
         private T GetOrAddComponent<T>() where T : Component
