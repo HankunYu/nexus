@@ -1,0 +1,22 @@
+{
+  "name": "Nexus.Calibration.Marker",
+  "rootNamespace": "Nexus.Calibration.Marker",
+  "references": [
+    "Nexus.Networking"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.unity.xr.arfoundation",
+      "expression": "",
+      "define": "AR_FOUNDATION"
+    }
+  ],
+  "noEngineReferences": false
+}

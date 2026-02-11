@@ -1,0 +1,22 @@
+{
+  "name": "Nexus.Calibration.Meta",
+  "rootNamespace": "Nexus.Calibration.Meta",
+  "references": [
+    "Nexus.Networking"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.meta.xr.sdk.core",
+      "expression": "",
+      "define": "META_XR_SDK"
+    }
+  ],
+  "noEngineReferences": false
+}
