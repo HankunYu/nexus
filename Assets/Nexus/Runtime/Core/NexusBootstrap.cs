@@ -1,4 +1,5 @@
 using Nexus.Networking.Local;
+using Nexus.Networking.VR;
 using UnityEngine;
 
 namespace Nexus.Networking.Core
@@ -70,6 +71,10 @@ namespace Nexus.Networking.Core
 
             // Wire into session
             session.Initialize(transport, discovery, roomManager);
+
+            // Wire VR player manager
+            var vrPlayerManager = GetOrAddComponent<NexusVRPlayerManager>();
+            vrPlayerManager.Initialize(roomManager, config);
 
             Debug.Log("[NexusBootstrap] Local mode initialized.");
         }
