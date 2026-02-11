@@ -28,5 +28,12 @@ namespace Nexus.Networking.VR
                 RightHand = new Pose(reader.ReadVector3(), reader.ReadQuaternion())
             };
         }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void RegisterSerializers()
+        {
+            Writer<VRPose>.write = WritePose;
+            Reader<VRPose>.read = ReadPose;
+        }
     }
 }

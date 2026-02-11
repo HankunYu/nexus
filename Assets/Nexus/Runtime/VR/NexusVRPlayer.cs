@@ -52,6 +52,7 @@ namespace Nexus.Networking.VR
             if (_trackingProvider != null)
             {
                 SampleLocalPose();
+                SendPoseIfReady();
             }
             else if (_hasTarget)
             {
@@ -134,6 +135,43 @@ namespace Nexus.Networking.VR
         }
 
         // Private methods
+        private void SendPoseIfReady()
+        {
+            _sendTimer += Time.deltaTime;
+            if (_sendTimer < _sendInterval)
+            {
+                return;
+            }
+
+            _sendTimer -= _sendInterval;
+
+            if (!isOwned)
+            {
+                return;
+            }
+
+            var pose = new VRPose
+            {
+                Head = new Pose(_head.localPosition, _head.localRotation),
+                LeftHand = new Pose(_leftHand.localPosition, _leftHand.localRotation),
+                RightHand = new Pose(_rightHand.localPosition, _rightHand.localRotation)
+            };
+
+            CmdSendPose(pose);
+        }
+
+        [Command]
+        private void CmdSendPose(VRPose pose)
+        {
+            RpcReceivePose(pose);
+        }
+
+        [ClientRpc(includeOwner = false)]
+        private void RpcReceivePose(VRPose pose)
+        {
+            SetTargetPose(pose, _interpolationSpeed);
+        }
+
         private Transform CreateChildTransform(string childName)
         {
             var child = new GameObject(childName).transform;
