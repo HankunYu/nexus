@@ -1,5 +1,6 @@
 using Nexus.Networking.Local;
 using Nexus.Networking.VR;
+using Nexus.Networking.VR.Calibration;
 using UnityEngine;
 
 namespace Nexus.Networking.Core
@@ -75,6 +76,11 @@ namespace Nexus.Networking.Core
             // Wire VR player manager
             var vrPlayerManager = GetOrAddComponent<NexusVRPlayerManager>();
             vrPlayerManager.Initialize(roomManager, config);
+
+            // Wire spatial calibration manager
+            var calibrationManager = GetOrAddComponent<SpatialCalibrationManager>();
+            var manualCalibration = new ManualCalibrationProvider();
+            calibrationManager.Initialize(manualCalibration, vrPlayerManager);
 
             Debug.Log("[NexusBootstrap] Local mode initialized.");
         }
