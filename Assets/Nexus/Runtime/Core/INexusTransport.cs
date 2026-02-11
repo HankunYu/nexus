@@ -11,29 +11,29 @@ namespace Nexus.Networking.Core
         /// <summary>
         /// Start as host (server + local client).
         /// </summary>
-        void StartHost(int port);
+        public void StartHost(int port);
 
         /// <summary>
         /// Connect to an existing host as a client.
         /// </summary>
-        void StartClient(string address, int port);
+        public void StartClient(string address, int port);
 
         /// <summary>
         /// Start as a dedicated server (no local client).
         /// </summary>
-        void StartServer(int port);
+        public void StartServer(int port);
 
         /// <summary>
         /// Stop all networking activity and clean up.
         /// </summary>
-        void Stop();
+        public void Stop();
 
-        bool IsActive { get; }
-        NetworkMode Mode { get; }
+        public bool IsActive { get; }
+        public NetworkMode Mode { get; }
 
-        event Action OnStarted;
-        event Action OnStopped;
-        event Action<int> OnClientConnected;
-        event Action<int> OnClientDisconnected;
+        public event Action OnStarted;
+        public event Action OnStopped;
+        public event Action<int> OnClientConnected;
+        public event Action<int> OnClientDisconnected;
     }
 }

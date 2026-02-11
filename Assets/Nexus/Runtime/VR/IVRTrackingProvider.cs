@@ -6,6 +6,6 @@ namespace Nexus.Networking.VR
     /// </summary>
     public interface IVRTrackingProvider
     {
-        VRPose GetCurrentPose();
+        public VRPose GetCurrentPose();
     }
 }

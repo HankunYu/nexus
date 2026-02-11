@@ -8,7 +8,7 @@ namespace Nexus.Networking.VR
     /// </summary>
     public interface IVRCustomState
     {
-        void Serialize(NetworkWriter writer);
-        void Deserialize(NetworkReader reader);
+        public void Serialize(NetworkWriter writer);
+        public void Deserialize(NetworkReader reader);
     }
 }

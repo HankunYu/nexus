@@ -11,26 +11,26 @@ namespace Nexus.Networking.Core
         /// <summary>
         /// Create and host a new room.
         /// </summary>
-        void CreateRoom(RoomConfig config);
+        public void CreateRoom(RoomConfig config);
 
         /// <summary>
         /// Join an existing room.
         /// </summary>
-        void JoinRoom(RoomInfo room);
+        public void JoinRoom(RoomInfo room);
 
         /// <summary>
         /// Leave the current room.
         /// </summary>
-        void LeaveRoom();
+        public void LeaveRoom();
 
-        RoomState CurrentState { get; }
-        RoomInfo CurrentRoom { get; }
-        IReadOnlyList<NexusPlayer> Players { get; }
+        public RoomState CurrentState { get; }
+        public RoomInfo CurrentRoom { get; }
+        public IReadOnlyList<NexusPlayer> Players { get; }
 
-        event Action<NexusPlayer> OnPlayerJoined;
-        event Action<NexusPlayer> OnPlayerLeft;
-        event Action<RoomInfo> OnRoomCreated;
-        event Action OnRoomJoined;
-        event Action OnRoomLeft;
+        public event Action<NexusPlayer> OnPlayerJoined;
+        public event Action<NexusPlayer> OnPlayerLeft;
+        public event Action<RoomInfo> OnRoomCreated;
+        public event Action OnRoomJoined;
+        public event Action OnRoomLeft;
     }
 }
