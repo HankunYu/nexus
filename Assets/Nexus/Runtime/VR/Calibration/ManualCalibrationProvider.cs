@@ -96,10 +96,9 @@ namespace Nexus.Networking.VR.Calibration
             // Guard against degenerate input (points too close in XZ plane)
             if (refDir.sqrMagnitude < 0.0001f || localDir.sqrMagnitude < 0.0001f)
             {
-                Vector3 position = refA - localA;
                 return new CalibrationData
                 {
-                    Position = position,
+                    Position = refA - localA,
                     Rotation = Quaternion.identity
                 };
             }
@@ -110,12 +109,12 @@ namespace Nexus.Networking.VR.Calibration
             // Compute Y-axis rotation offset
             Quaternion rotation = Quaternion.FromToRotation(localDir, refDir);
 
-            // Compute position offset: refA = rotation * localA + position
-            Vector3 position = refA - rotation * localA;
+            // Compute position offset: refA = rotation * localA + positionOffset
+            Vector3 positionOffset = refA - rotation * localA;
 
             return new CalibrationData
             {
-                Position = position,
+                Position = positionOffset,
                 Rotation = rotation
             };
         }

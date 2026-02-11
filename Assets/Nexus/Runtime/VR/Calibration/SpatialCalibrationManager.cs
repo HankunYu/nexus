@@ -198,9 +198,9 @@ namespace Nexus.Networking.VR.Calibration
                 return;
             }
 
+            // ConnectionId is filled in by the server (server-authoritative)
             NetworkClient.Send(new CalibrationResultMessage
             {
-                ConnectionId = NetworkClient.connection.connectionId,
                 Position = data.Position,
                 Rotation = data.Rotation
             });
