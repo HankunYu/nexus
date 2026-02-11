@@ -18,7 +18,7 @@ namespace Nexus.Networking.VR
         private IVRCustomState _customState;
         private VRPose _targetPose;
         private float _sendTimer;
-        private float _sendInterval;
+        private float _sendInterval = 1f / 30f;
         private float _interpolationSpeed;
         private bool _hasTarget;
 
@@ -137,6 +137,11 @@ namespace Nexus.Networking.VR
         // Private methods
         private void SendPoseIfReady()
         {
+            if (!isOwned)
+            {
+                return;
+            }
+
             _sendTimer += Time.deltaTime;
             if (_sendTimer < _sendInterval)
             {
@@ -144,11 +149,6 @@ namespace Nexus.Networking.VR
             }
 
             _sendTimer -= _sendInterval;
-
-            if (!isOwned)
-            {
-                return;
-            }
 
             var pose = new VRPose
             {
