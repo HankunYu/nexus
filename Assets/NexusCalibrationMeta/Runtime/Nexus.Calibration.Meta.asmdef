@@ -2,7 +2,8 @@
   "name": "Nexus.Calibration.Meta",
   "rootNamespace": "Nexus.Calibration.Meta",
   "references": [
-    "Nexus.Networking"
+    "Nexus.Networking",
+    "Oculus.VR"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

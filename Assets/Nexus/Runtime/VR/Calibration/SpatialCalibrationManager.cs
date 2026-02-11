@@ -35,6 +35,11 @@ namespace Nexus.Networking.VR.Calibration
             {
                 _provider.OnCalibrationComplete -= HandleCalibrationComplete;
                 _provider.OnCalibrationFailed -= HandleCalibrationFailed;
+
+                if (_provider is IAnchorCalibrationProvider anchorProvider)
+                {
+                    anchorProvider.OnAnchorShared -= HandleAnchorShared;
+                }
             }
 
             if (_vrPlayerManager != null)
@@ -56,6 +61,11 @@ namespace Nexus.Networking.VR.Calibration
             {
                 _provider.OnCalibrationComplete -= HandleCalibrationComplete;
                 _provider.OnCalibrationFailed -= HandleCalibrationFailed;
+
+                if (_provider is IAnchorCalibrationProvider oldAnchorProvider)
+                {
+                    oldAnchorProvider.OnAnchorShared -= HandleAnchorShared;
+                }
             }
 
             if (_vrPlayerManager != null)
@@ -68,6 +78,11 @@ namespace Nexus.Networking.VR.Calibration
 
             _provider.OnCalibrationComplete += HandleCalibrationComplete;
             _provider.OnCalibrationFailed += HandleCalibrationFailed;
+
+            if (_provider is IAnchorCalibrationProvider anchorProvider)
+            {
+                anchorProvider.OnAnchorShared += HandleAnchorShared;
+            }
 
             if (_vrPlayerManager != null)
             {
@@ -139,6 +154,7 @@ namespace Nexus.Networking.VR.Calibration
             {
                 NetworkClient.RegisterHandler<ReferencePointsMessage>(OnClientReceivedReferencePoints);
                 NetworkClient.RegisterHandler<CalibrationResultMessage>(OnClientReceivedCalibration);
+                NetworkClient.RegisterHandler<AnchorShareMessage>(OnClientReceivedAnchorShare);
             }
 
             _networkHandlersRegistered = true;
@@ -164,6 +180,7 @@ namespace Nexus.Networking.VR.Calibration
             {
                 NetworkClient.UnregisterHandler<ReferencePointsMessage>();
                 NetworkClient.UnregisterHandler<CalibrationResultMessage>();
+                NetworkClient.UnregisterHandler<AnchorShareMessage>();
             }
 
             _networkHandlersRegistered = false;
@@ -260,6 +277,40 @@ namespace Nexus.Networking.VR.Calibration
             };
             StoreCalibration(msg.ConnectionId, data);
             Debug.Log($"[SpatialCalibrationManager] Applied calibration for connection {msg.ConnectionId}.");
+        }
+
+        private void HandleAnchorShared(AnchorShareData data)
+        {
+            if (!NetworkServer.active)
+            {
+                Debug.LogWarning("[SpatialCalibrationManager] Cannot broadcast anchor: server not active.");
+                return;
+            }
+
+            NetworkServer.SendToAll(new AnchorShareMessage
+            {
+                AnchorUuid = data.AnchorUuid,
+                GroupUuid = data.GroupUuid,
+                HostPosition = data.HostPosition,
+                HostRotation = data.HostRotation
+            });
+            Debug.Log($"[SpatialCalibrationManager] Broadcast anchor share: {data.AnchorUuid}");
+        }
+
+        private void OnClientReceivedAnchorShare(AnchorShareMessage msg)
+        {
+            if (_provider is IAnchorCalibrationProvider anchorProvider)
+            {
+                var data = new AnchorShareData
+                {
+                    AnchorUuid = msg.AnchorUuid,
+                    GroupUuid = msg.GroupUuid,
+                    HostPosition = msg.HostPosition,
+                    HostRotation = msg.HostRotation
+                };
+                anchorProvider.LoadSharedAnchor(data);
+                Debug.Log($"[SpatialCalibrationManager] Received anchor share, loading: {msg.AnchorUuid}");
+            }
         }
     }
 }
