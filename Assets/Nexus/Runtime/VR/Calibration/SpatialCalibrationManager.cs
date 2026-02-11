@@ -51,6 +51,18 @@ namespace Nexus.Networking.VR.Calibration
 
         public void Initialize(ICalibrationProvider provider, NexusVRPlayerManager vrPlayerManager)
         {
+            // Unsubscribe from previous provider/manager if re-initialized
+            if (_provider != null)
+            {
+                _provider.OnCalibrationComplete -= HandleCalibrationComplete;
+                _provider.OnCalibrationFailed -= HandleCalibrationFailed;
+            }
+
+            if (_vrPlayerManager != null)
+            {
+                _vrPlayerManager.OnVRPlayerSpawned -= HandleVRPlayerSpawned;
+            }
+
             _provider = provider;
             _vrPlayerManager = vrPlayerManager;
 
@@ -233,6 +245,8 @@ namespace Nexus.Networking.VR.Calibration
                 Position = msg.Position,
                 Rotation = msg.Rotation
             };
+            // Use server-authoritative connection ID
+            msg.ConnectionId = conn.connectionId;
             StoreCalibration(msg.ConnectionId, data);
             NetworkServer.SendToAll(msg);
         }

@@ -89,10 +89,22 @@ namespace Nexus.Networking.VR.Calibration
             // Project direction vectors to XZ plane (Y-axis rotation only)
             Vector3 refDir = refB - refA;
             refDir.y = 0f;
-            refDir.Normalize();
 
             Vector3 localDir = localB - localA;
             localDir.y = 0f;
+
+            // Guard against degenerate input (points too close in XZ plane)
+            if (refDir.sqrMagnitude < 0.0001f || localDir.sqrMagnitude < 0.0001f)
+            {
+                Vector3 position = refA - localA;
+                return new CalibrationData
+                {
+                    Position = position,
+                    Rotation = Quaternion.identity
+                };
+            }
+
+            refDir.Normalize();
             localDir.Normalize();
 
             // Compute Y-axis rotation offset

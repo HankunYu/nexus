@@ -16,7 +16,9 @@ namespace Nexus.Calibration.Meta
         public CalibrationState State { get; private set; }
 
         // Events
+#pragma warning disable CS0067 // Skeleton provider — event used when implemented
         public event Action<CalibrationData> OnCalibrationComplete;
+#pragma warning restore CS0067
         public event Action<string> OnCalibrationFailed;
 
         // Public methods
