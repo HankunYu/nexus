@@ -47,18 +47,19 @@ namespace Nexus.Networking.Tests
             // Create config
             _config = CreateTestConfig();
 
-            // Create root GameObject with all components
+            // Create inactive GameObject so Awake() doesn't fire during AddComponent
             _rootObject = new GameObject("NexusTestRoot");
+            _rootObject.SetActive(false);
 
-            // Add Mirror components first
-            _mirrorManager = _rootObject.AddComponent<NetworkManager>();
+            // Add Mirror transport BEFORE NetworkManager (Awake checks transport)
             var kcpTransport = _rootObject.AddComponent<kcp2k.KcpTransport>();
             Transport.active = kcpTransport;
+            _mirrorManager = _rootObject.AddComponent<NetworkManager>();
+            _mirrorManager.transport = kcpTransport;
+            _mirrorManager.autoCreatePlayer = false;
 
             // Add Nexus components
             _session = _rootObject.AddComponent<NexusSession>();
-
-            // Set _config via reflection (private serialized field)
             TestHelpers.SetPrivateField(_session, "_config", _config);
 
             _localTransport = _rootObject.AddComponent<LocalTransport>();
@@ -66,7 +67,8 @@ namespace Nexus.Networking.Tests
             _roomManager = _rootObject.AddComponent<LocalRoomManager>();
             _reconnect = _rootObject.AddComponent<ReconnectHandler>();
 
-            // Wait for Awake to run
+            // Activate — triggers all Awake() calls with transport already set
+            _rootObject.SetActive(true);
             yield return null;
 
             // Wire up (same as NexusBootstrap.InitializeLocal)

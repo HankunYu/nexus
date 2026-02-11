@@ -115,10 +115,11 @@ namespace Nexus.Networking.Local
                     break;
             }
 
-            _mode = NetworkMode.None;
-
             Debug.Log("[LocalTransport] Stopped.");
+
+            // Fire event before resetting mode so listeners can check Mode
             OnStopped?.Invoke();
+            _mode = NetworkMode.None;
         }
 
         // Private methods

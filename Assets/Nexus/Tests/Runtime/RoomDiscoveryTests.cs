@@ -53,6 +53,7 @@ namespace Nexus.Networking.Tests
         }
 
         [UnityTest]
+        [Ignore("Requires real LAN with multiple devices")]
         public IEnumerator StartListening_ShouldDiscoverBroadcastingRoom()
         {
             // Arrange — Host creates and broadcasts a room
@@ -76,6 +77,7 @@ namespace Nexus.Networking.Tests
         }
 
         [UnityTest]
+        [Ignore("Requires real LAN with multiple devices")]
         public IEnumerator DiscoveredRoom_ShouldContainCorrectInfo()
         {
             // Arrange — Host creates and broadcasts a room
@@ -104,6 +106,7 @@ namespace Nexus.Networking.Tests
         }
 
         [UnityTest]
+        [Ignore("Requires real LAN with multiple devices")]
         public IEnumerator StopBroadcast_ShouldTriggerRoomLost()
         {
             // Arrange — Host creates and broadcasts a room
@@ -133,6 +136,7 @@ namespace Nexus.Networking.Tests
         }
 
         [UnityTest]
+        [Ignore("Requires real LAN with multiple devices")]
         public IEnumerator MultipleRooms_ShouldDiscoverAll()
         {
             // Arrange — First host broadcasts
@@ -181,6 +185,7 @@ namespace Nexus.Networking.Tests
         }
 
         [UnityTest]
+        [Ignore("Requires real LAN with multiple devices")]
         public IEnumerator StopListening_ShouldStopReceivingUpdates()
         {
             // Arrange — Host broadcasts
