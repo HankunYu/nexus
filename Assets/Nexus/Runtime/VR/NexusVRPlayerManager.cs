@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Mirror;
 using Nexus.Networking.Core;
@@ -166,12 +167,6 @@ namespace Nexus.Networking.VR
 
         private void SpawnNetworkedPlayer(NexusPlayer player)
         {
-            var playerObj = new GameObject($"VRPlayer_{player.DisplayName}");
-            playerObj.transform.SetParent(transform, false);
-
-            playerObj.AddComponent<NetworkIdentity>();
-            playerObj.AddComponent<NexusVRPlayer>();
-
             // Find the owner connection
             NetworkConnectionToClient ownerConn = null;
             if (NetworkServer.connections.TryGetValue(player.ConnectionId, out var conn))
@@ -180,9 +175,40 @@ namespace Nexus.Networking.VR
             }
             else if (player.ConnectionId == 0)
             {
-                // Fallback for host: localConnection may not be in connections dict
                 ownerConn = NetworkServer.localConnection;
             }
+
+            // Mirror requires conn.isReady before ShowForConnection sends SpawnMessage.
+            // In host mode, localConnection becomes ready next frame (QueueConnectedEvent).
+            // Defer spawn until connection is ready to avoid silent drop.
+            if (ownerConn != null && !ownerConn.isReady)
+            {
+                StartCoroutine(SpawnWhenReady(player, ownerConn));
+                return;
+            }
+
+            DoSpawn(player, ownerConn);
+        }
+
+        private IEnumerator SpawnWhenReady(NexusPlayer player, NetworkConnectionToClient ownerConn)
+        {
+            Debug.Log($"[NexusVRPlayerManager] Waiting for connection ready: {player.DisplayName} (conn={player.ConnectionId})");
+
+            while (!ownerConn.isReady)
+            {
+                yield return null;
+            }
+
+            DoSpawn(player, ownerConn);
+        }
+
+        private void DoSpawn(NexusPlayer player, NetworkConnectionToClient ownerConn)
+        {
+            var playerObj = new GameObject($"VRPlayer_{player.DisplayName}");
+            playerObj.transform.SetParent(transform, false);
+
+            playerObj.AddComponent<NetworkIdentity>();
+            playerObj.AddComponent<NexusVRPlayer>();
 
             // Use the 3-arg overload: internally sets identity.assetId (internal setter)
             NetworkServer.Spawn(playerObj, VRPlayerAssetId, ownerConn);
