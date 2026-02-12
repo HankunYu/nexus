@@ -2,7 +2,8 @@
   "name": "Nexus.Networking.Editor",
   "rootNamespace": "Nexus.Networking.Editor",
   "references": [
-    "Nexus.Networking"
+    "Nexus.Networking",
+    "Mirror"
   ],
   "includePlatforms": [
     "Editor"
