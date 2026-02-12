@@ -14,6 +14,10 @@ namespace Nexus.Networking.Local
     public class LanDiscovery : NetworkDiscoveryBase<NexusDiscoveryRequest, NexusDiscoveryResponse>,
         INexusDiscovery
     {
+        // Constants
+        // Fixed handshake so all Nexus instances can discover each other
+        private const long NexusHandshake = 0x4E455855534C414E; // "NEXUSLAN"
+
         // Private fields
         private readonly Dictionary<string, RoomInfo> _discoveredRooms = new Dictionary<string, RoomInfo>();
         private RoomInfo _broadcastRoom;
@@ -48,6 +52,7 @@ namespace Nexus.Networking.Local
         {
             serverBroadcastListenPort = discoveryPort;
             _roomTimeout = roomTimeout;
+            secretHandshake = NexusHandshake;
         }
 
         public void StartBroadcast(RoomInfo room)

@@ -12,8 +12,9 @@ namespace Nexus.Networking.Debugging
     {
         [SerializeField] private string _roomName = "Nexus Room";
 
-        // Runtime state (read-only in Inspector)
+        // Private fields
         private readonly List<RoomInfo> _discoveredRooms = new List<RoomInfo>();
+        private bool _isSubscribed;
 
         // Public properties
         public NexusSession Session => NexusSession.Instance;
@@ -21,26 +22,33 @@ namespace Nexus.Networking.Debugging
         public IReadOnlyList<RoomInfo> DiscoveredRooms => _discoveredRooms;
         public string RoomName => _roomName;
 
-        private void OnEnable()
+        private void OnDisable()
         {
-            if (Session?.Discovery == null)
+            Unsubscribe();
+        }
+
+        private void Subscribe()
+        {
+            if (_isSubscribed || Session?.Discovery == null)
             {
                 return;
             }
 
             Session.Discovery.OnRoomFound += HandleRoomFound;
             Session.Discovery.OnRoomLost += HandleRoomLost;
+            _isSubscribed = true;
         }
 
-        private void OnDisable()
+        private void Unsubscribe()
         {
-            if (Session?.Discovery == null)
+            if (!_isSubscribed || Session?.Discovery == null)
             {
                 return;
             }
 
             Session.Discovery.OnRoomFound -= HandleRoomFound;
             Session.Discovery.OnRoomLost -= HandleRoomLost;
+            _isSubscribed = false;
         }
 
         public void CreateRoom()
@@ -51,6 +59,7 @@ namespace Nexus.Networking.Debugging
                 return;
             }
 
+            Subscribe();
             Session.CreateRoom(_roomName);
             Debug.Log($"[NexusDebugPanel] CreateRoom: {_roomName}");
         }
@@ -63,6 +72,7 @@ namespace Nexus.Networking.Debugging
                 return;
             }
 
+            Subscribe();
             _discoveredRooms.Clear();
             Session.StartDiscovery();
             Debug.Log("[NexusDebugPanel] Discovery started.");
