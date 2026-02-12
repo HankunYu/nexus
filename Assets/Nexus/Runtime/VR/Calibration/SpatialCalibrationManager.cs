@@ -249,12 +249,27 @@ namespace Nexus.Networking.VR.Calibration
 
         private void HandleVRPlayerSpawned(NexusVRPlayer player)
         {
-            if (_vrPlayerManager != null && player == _vrPlayerManager.LocalPlayer)
+            if (_vrPlayerManager == null)
+            {
+                return;
+            }
+
+            // Local player: apply local calibration
+            if (player == _vrPlayerManager.LocalPlayer)
             {
                 if (State == CalibrationState.Calibrated)
                 {
                     ApplyCalibrationToPlayer(player, LocalCalibration);
                 }
+                return;
+            }
+
+            // Remote player: apply stored calibration if available
+            int connId = _vrPlayerManager.GetConnectionId(player);
+            if (connId >= 0 && _calibrationsByConnectionId.TryGetValue(connId, out CalibrationData data))
+            {
+                ApplyCalibrationToPlayer(player, data);
+                Debug.Log($"[SpatialCalibrationManager] Applied stored calibration to remote player (conn={connId}).");
             }
         }
 
@@ -286,7 +301,21 @@ namespace Nexus.Networking.VR.Calibration
                 Rotation = msg.Rotation
             };
             StoreCalibration(msg.ConnectionId, data);
-            Debug.Log($"[SpatialCalibrationManager] Applied calibration for connection {msg.ConnectionId}.");
+
+            // Apply to already-spawned remote player (covers "calibration arrives after spawn")
+            if (_vrPlayerManager != null)
+            {
+                foreach (NexusVRPlayer remote in _vrPlayerManager.RemotePlayers)
+                {
+                    if (_vrPlayerManager.GetConnectionId(remote) == msg.ConnectionId)
+                    {
+                        ApplyCalibrationToPlayer(remote, data);
+                        break;
+                    }
+                }
+            }
+
+            Debug.Log($"[SpatialCalibrationManager] Received calibration for connection {msg.ConnectionId}.");
         }
 
         private void HandleAnchorShared(AnchorShareData data)

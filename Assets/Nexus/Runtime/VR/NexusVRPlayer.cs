@@ -39,6 +39,30 @@ namespace Nexus.Networking.VR
             set => _customState = value;
         }
 
+        // Mirror callbacks
+        public override void OnStartAuthority()
+        {
+            var manager = FindAnyObjectByType<NexusVRPlayerManager>();
+            if (manager != null)
+            {
+                manager.RegisterLocalPlayer(this);
+            }
+        }
+
+        public override void OnStartClient()
+        {
+            if (isOwned)
+            {
+                return;
+            }
+
+            var manager = FindAnyObjectByType<NexusVRPlayerManager>();
+            if (manager != null)
+            {
+                manager.RegisterRemotePlayer(this);
+            }
+        }
+
         // Unity callbacks
         private void Awake()
         {

@@ -17,6 +17,10 @@ namespace Nexus.Networking.Core
         [Tooltip("Optional: assign a MonoBehaviour implementing ICalibrationProvider (e.g. MetaSpatialAnchorProvider). If empty, defaults to ManualCalibrationProvider.")]
         [SerializeField] private MonoBehaviour _calibrationProviderOverride;
 
+        [Header("VR Tracking")]
+        [Tooltip("Optional: assign a MonoBehaviour implementing IVRTrackingProvider (e.g. MetaVRTrackingProvider). If empty, no local tracking.")]
+        [SerializeField] private MonoBehaviour _trackingProviderOverride;
+
         private void Start()
         {
             var session = GetComponent<NexusSession>();
@@ -43,20 +47,23 @@ namespace Nexus.Networking.Core
         {
             NexusConfig config = session.Config;
 
-            // Ensure Mirror NetworkManager exists
-            if (!TryGetComponent<Mirror.NetworkManager>(out _))
-            {
-                gameObject.AddComponent<Mirror.NetworkManager>();
-            }
-
-            // Ensure KcpTransport exists
+            // Ensure KcpTransport exists BEFORE NetworkManager (Awake checks transport)
             if (!TryGetComponent<kcp2k.KcpTransport>(out var kcpTransport))
             {
                 kcpTransport = gameObject.AddComponent<kcp2k.KcpTransport>();
             }
 
-            // Set KCP as active transport
             Mirror.Transport.active = kcpTransport;
+
+            // Ensure Mirror NetworkManager exists
+            if (!TryGetComponent<Mirror.NetworkManager>(out var networkManager))
+            {
+                networkManager = gameObject.AddComponent<Mirror.NetworkManager>();
+            }
+
+            // Assign transport and disable auto player spawn
+            networkManager.transport = kcpTransport;
+            networkManager.autoCreatePlayer = false;
 
             // Create Local implementations
             var transport = GetOrAddComponent<LocalTransport>();
@@ -79,6 +86,7 @@ namespace Nexus.Networking.Core
 
             // Wire VR player manager
             var vrPlayerManager = GetOrAddComponent<NexusVRPlayerManager>();
+            vrPlayerManager.TrackingProvider = ResolveTrackingProvider();
             vrPlayerManager.Initialize(roomManager, config);
 
             // Wire spatial calibration manager
@@ -87,6 +95,22 @@ namespace Nexus.Networking.Core
             calibrationManager.Initialize(calibrationProvider, vrPlayerManager);
 
             Debug.Log("[NexusBootstrap] Local mode initialized.");
+        }
+
+        private IVRTrackingProvider ResolveTrackingProvider()
+        {
+            if (_trackingProviderOverride != null)
+            {
+                if (_trackingProviderOverride is IVRTrackingProvider provider)
+                {
+                    Debug.Log($"[NexusBootstrap] Using tracking provider: {_trackingProviderOverride.GetType().Name}");
+                    return provider;
+                }
+
+                Debug.LogWarning($"[NexusBootstrap] {_trackingProviderOverride.GetType().Name} does not implement IVRTrackingProvider. No local tracking.");
+            }
+
+            return null;
         }
 
         private ICalibrationProvider ResolveCalibrationProvider()
