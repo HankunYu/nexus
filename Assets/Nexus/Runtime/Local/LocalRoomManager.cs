@@ -70,8 +70,8 @@ namespace Nexus.Networking.Local
                 Metadata = config.Metadata ?? new Dictionary<string, string>()
             };
 
-            _transport.StartHost(config.Port);
-
+            // Add host player BEFORE StartHost to prevent duplicate from
+            // HandleClientConnected(0) which fires inside StartHost.
             var hostPlayer = new NexusPlayer
             {
                 ConnectionId = 0,
@@ -81,6 +81,8 @@ namespace Nexus.Networking.Local
                 IsLocal = true
             };
             _players.Add(hostPlayer);
+
+            _transport.StartHost(config.Port);
 
             SetState(RoomState.InRoom);
 
@@ -140,6 +142,12 @@ namespace Nexus.Networking.Local
         private void HandleClientConnected(int connectionId)
         {
             if (_currentRoom == null)
+            {
+                return;
+            }
+
+            // Skip if player already tracked (e.g., host connId=0 added in CreateRoom)
+            if (_players.Exists(p => p.ConnectionId == connectionId))
             {
                 return;
             }

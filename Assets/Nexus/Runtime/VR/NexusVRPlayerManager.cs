@@ -178,6 +178,11 @@ namespace Nexus.Networking.VR
             {
                 ownerConn = conn;
             }
+            else if (player.ConnectionId == 0)
+            {
+                // Fallback for host: localConnection may not be in connections dict
+                ownerConn = NetworkServer.localConnection;
+            }
 
             // Use the 3-arg overload: internally sets identity.assetId (internal setter)
             NetworkServer.Spawn(playerObj, VRPlayerAssetId, ownerConn);

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Nexus.Networking.Core;
+using Nexus.Networking.VR;
 using UnityEngine;
 
 namespace Nexus.Networking.Debugging
@@ -7,6 +8,7 @@ namespace Nexus.Networking.Debugging
     /// <summary>
     /// Inspector-driven debug panel for Nexus networking.
     /// Provides buttons for room creation, discovery, joining, and leaving.
+    /// Shows connected players and session state in real time.
     /// </summary>
     public class NexusDebugPanel : MonoBehaviour
     {
@@ -21,6 +23,13 @@ namespace Nexus.Networking.Debugging
         public SessionState CurrentState => Session != null ? Session.State : SessionState.Idle;
         public IReadOnlyList<RoomInfo> DiscoveredRooms => _discoveredRooms;
         public string RoomName => _roomName;
+
+        public INexusRoomManager RoomManager => Session?.RoomManager;
+        public IReadOnlyList<NexusPlayer> Players => RoomManager?.Players;
+        public RoomInfo CurrentRoom => RoomManager?.CurrentRoom;
+
+        public NexusVRPlayerManager VRPlayerManager =>
+            Session != null ? Session.GetComponent<NexusVRPlayerManager>() : null;
 
         private void OnDisable()
         {
