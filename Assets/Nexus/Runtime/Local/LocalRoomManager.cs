@@ -111,21 +111,10 @@ namespace Nexus.Networking.Local
             _transport.StartClient(room.HostAddress, room.Port);
             RegisterNetworkHandlers();
 
-            var localPlayer = new NexusPlayer
-            {
-                ConnectionId = -1,
-                PlayerId = Guid.NewGuid().ToString(),
-                DisplayName = "Player",
-                IsHost = false,
-                IsLocal = true
-            };
-            _players.Add(localPlayer);
-
             SetState(RoomState.InRoom);
 
             Debug.Log($"[LocalRoomManager] Joined room: {room.RoomName} at {room.HostAddress}:{room.Port}");
             OnRoomJoined?.Invoke();
-            OnPlayerJoined?.Invoke(localPlayer);
         }
 
         public void LeaveRoom()
