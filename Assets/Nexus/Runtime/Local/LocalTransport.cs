@@ -16,6 +16,7 @@ namespace Nexus.Networking.Local
         // Private fields
         private NetworkManager _networkManager;
         private NetworkMode _mode = NetworkMode.None;
+        private bool _serverEventsSubscribed;
 
         // Public properties
         public bool IsActive => _networkManager != null && _networkManager.isNetworkActive;
@@ -33,16 +34,9 @@ namespace Nexus.Networking.Local
             _networkManager = GetComponent<NetworkManager>();
         }
 
-        private void OnEnable()
-        {
-            NetworkServer.OnConnectedEvent += HandleServerConnected;
-            NetworkServer.OnDisconnectedEvent += HandleServerDisconnected;
-        }
-
         private void OnDisable()
         {
-            NetworkServer.OnConnectedEvent -= HandleServerConnected;
-            NetworkServer.OnDisconnectedEvent -= HandleServerDisconnected;
+            UnsubscribeServerEvents();
         }
 
         // Public methods
@@ -56,6 +50,11 @@ namespace Nexus.Networking.Local
 
             ConfigureTransport(port);
             _networkManager.StartHost();
+
+            // Subscribe AFTER StartHost because NetworkManager.RegisterServerMessages()
+            // uses = (not +=) to assign OnConnectedEvent, overwriting any prior handlers.
+            SubscribeServerEvents();
+
             _mode = NetworkMode.Host;
 
             Debug.Log($"[LocalTransport] Host started on port {port}.");
@@ -89,6 +88,10 @@ namespace Nexus.Networking.Local
 
             ConfigureTransport(port);
             _networkManager.StartServer();
+
+            // Subscribe AFTER StartServer (same reason as StartHost)
+            SubscribeServerEvents();
+
             _mode = NetworkMode.Server;
 
             Debug.Log($"[LocalTransport] Server started on port {port}.");
@@ -101,6 +104,8 @@ namespace Nexus.Networking.Local
             {
                 return;
             }
+
+            UnsubscribeServerEvents();
 
             switch (_mode)
             {
@@ -123,6 +128,30 @@ namespace Nexus.Networking.Local
         }
 
         // Private methods
+        private void SubscribeServerEvents()
+        {
+            if (_serverEventsSubscribed)
+            {
+                return;
+            }
+
+            NetworkServer.OnConnectedEvent += HandleServerConnected;
+            NetworkServer.OnDisconnectedEvent += HandleServerDisconnected;
+            _serverEventsSubscribed = true;
+        }
+
+        private void UnsubscribeServerEvents()
+        {
+            if (!_serverEventsSubscribed)
+            {
+                return;
+            }
+
+            NetworkServer.OnConnectedEvent -= HandleServerConnected;
+            NetworkServer.OnDisconnectedEvent -= HandleServerDisconnected;
+            _serverEventsSubscribed = false;
+        }
+
         private void ConfigureTransport(int port)
         {
             if (Transport.active is kcp2k.KcpTransport kcpTransport)

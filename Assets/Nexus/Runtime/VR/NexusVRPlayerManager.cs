@@ -202,7 +202,13 @@ namespace Nexus.Networking.VR
             instance.name = $"VRPlayer_{player.DisplayName}";
             instance.transform.SetParent(transform, false);
 
-            NetworkServer.AddPlayerForConnection(ownerConn, instance, VRPlayerAssetId);
+            if (!NetworkServer.AddPlayerForConnection(ownerConn, instance, VRPlayerAssetId))
+            {
+                Debug.LogError($"[NexusVRPlayerManager] AddPlayerForConnection failed for {player.DisplayName} (conn={player.ConnectionId}, ready={ownerConn.isReady}, hasIdentity={ownerConn.identity != null})");
+                Destroy(instance);
+                return;
+            }
+
             Debug.Log($"[NexusVRPlayerManager] Server spawned VR player: {player.DisplayName} (conn={player.ConnectionId})");
         }
 
