@@ -246,8 +246,16 @@ namespace Nexus.Networking.Local
                 };
             }
 
-            var message = new PlayerListMessage { Players = entries };
-            NetworkServer.SendToAll(message);
+            // Send per-connection so each client receives its own connectionId
+            foreach (NetworkConnectionToClient conn in NetworkServer.connections.Values)
+            {
+                conn.Send(new PlayerListMessage
+                {
+                    LocalConnectionId = conn.connectionId,
+                    Players = entries
+                });
+            }
+
             Debug.Log($"[LocalRoomManager] Broadcast player list ({entries.Length} players) to all clients.");
         }
 
@@ -259,7 +267,7 @@ namespace Nexus.Networking.Local
                 return;
             }
 
-            int localConnectionId = NetworkClient.connection?.connectionId ?? -1;
+            int localConnectionId = message.LocalConnectionId;
 
             // Build new player list from server data
             var newPlayers = new List<NexusPlayer>(message.Players.Length);

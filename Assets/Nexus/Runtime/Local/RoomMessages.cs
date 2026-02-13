@@ -14,10 +14,12 @@ namespace Nexus.Networking.Local
     }
 
     /// <summary>
-    /// Broadcast from server to all clients whenever the player list changes.
+    /// Sent from server to each client whenever the player list changes.
+    /// Each client receives its own connectionId in LocalConnectionId.
     /// </summary>
     public struct PlayerListMessage : NetworkMessage
     {
+        public int LocalConnectionId;
         public PlayerInfoEntry[] Players;
     }
 }
