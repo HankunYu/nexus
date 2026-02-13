@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using Mirror;
 using Nexus.Networking.Core;
 using UnityEngine;
 
@@ -17,6 +19,7 @@ namespace Nexus.Networking.Local
         private RoomState _currentState = RoomState.Idle;
         private RoomInfo _currentRoom;
         private readonly List<NexusPlayer> _players = new List<NexusPlayer>();
+        private bool _networkHandlersRegistered;
 
         // Public properties
         public RoomState CurrentState => _currentState;
@@ -33,6 +36,8 @@ namespace Nexus.Networking.Local
         // Unity callbacks
         private void OnDestroy()
         {
+            UnregisterNetworkHandlers();
+
             if (_transport != null)
             {
                 _transport.OnClientConnected -= HandleClientConnected;
@@ -83,6 +88,7 @@ namespace Nexus.Networking.Local
             _players.Add(hostPlayer);
 
             _transport.StartHost(config.Port);
+            RegisterNetworkHandlers();
 
             SetState(RoomState.InRoom);
 
@@ -103,6 +109,7 @@ namespace Nexus.Networking.Local
 
             _currentRoom = room;
             _transport.StartClient(room.HostAddress, room.Port);
+            RegisterNetworkHandlers();
 
             var localPlayer = new NexusPlayer
             {
@@ -128,6 +135,7 @@ namespace Nexus.Networking.Local
                 return;
             }
 
+            UnregisterNetworkHandlers();
             _transport.Stop();
             _players.Clear();
             _currentRoom = null;
@@ -166,6 +174,7 @@ namespace Nexus.Networking.Local
 
             Debug.Log($"[LocalRoomManager] Player connected: {player.DisplayName} (conn: {connectionId})");
             OnPlayerJoined?.Invoke(player);
+            BroadcastPlayerList();
         }
 
         private void HandleClientDisconnected(int connectionId)
@@ -185,6 +194,7 @@ namespace Nexus.Networking.Local
 
             Debug.Log($"[LocalRoomManager] Player disconnected: {player.DisplayName} (conn: {connectionId})");
             OnPlayerLeft?.Invoke(player);
+            BroadcastPlayerList();
         }
 
         private void SetState(RoomState newState)
@@ -195,6 +205,112 @@ namespace Nexus.Networking.Local
             }
 
             _currentState = newState;
+        }
+
+        private void RegisterNetworkHandlers()
+        {
+            if (_networkHandlersRegistered)
+            {
+                return;
+            }
+
+            if (NetworkClient.active)
+            {
+                NetworkClient.RegisterHandler<PlayerListMessage>(HandlePlayerListReceived);
+            }
+
+            _networkHandlersRegistered = true;
+            Debug.Log("[LocalRoomManager] Network handlers registered.");
+        }
+
+        private void UnregisterNetworkHandlers()
+        {
+            if (!_networkHandlersRegistered)
+            {
+                return;
+            }
+
+            if (NetworkClient.active)
+            {
+                NetworkClient.UnregisterHandler<PlayerListMessage>();
+            }
+
+            _networkHandlersRegistered = false;
+        }
+
+        private void BroadcastPlayerList()
+        {
+            if (!NetworkServer.active)
+            {
+                return;
+            }
+
+            var entries = new PlayerInfoEntry[_players.Count];
+            for (int i = 0; i < _players.Count; i++)
+            {
+                entries[i] = new PlayerInfoEntry
+                {
+                    ConnectionId = _players[i].ConnectionId,
+                    PlayerId = _players[i].PlayerId,
+                    DisplayName = _players[i].DisplayName,
+                    IsHost = _players[i].IsHost
+                };
+            }
+
+            var message = new PlayerListMessage { Players = entries };
+            NetworkServer.SendToAll(message);
+            Debug.Log($"[LocalRoomManager] Broadcast player list ({entries.Length} players) to all clients.");
+        }
+
+        private void HandlePlayerListReceived(PlayerListMessage message)
+        {
+            // Host already has the authoritative list; skip client-side sync
+            if (NetworkServer.active)
+            {
+                return;
+            }
+
+            int localConnectionId = NetworkClient.connection?.connectionId ?? -1;
+
+            // Build new player list from server data
+            var newPlayers = new List<NexusPlayer>(message.Players.Length);
+            foreach (PlayerInfoEntry entry in message.Players)
+            {
+                newPlayers.Add(new NexusPlayer
+                {
+                    ConnectionId = entry.ConnectionId,
+                    PlayerId = entry.PlayerId,
+                    DisplayName = entry.DisplayName,
+                    IsHost = entry.IsHost,
+                    IsLocal = entry.ConnectionId == localConnectionId
+                });
+            }
+
+            // Diff: find removed players (in old list but not in new)
+            var oldIds = _players.Select(p => p.ConnectionId).ToHashSet();
+            var newIds = newPlayers.Select(p => p.ConnectionId).ToHashSet();
+
+            foreach (NexusPlayer removed in _players.Where(p => !newIds.Contains(p.ConnectionId)))
+            {
+                Debug.Log($"[LocalRoomManager] Player left (synced): {removed.DisplayName} (conn: {removed.ConnectionId})");
+                OnPlayerLeft?.Invoke(removed);
+            }
+
+            // Diff: find added players (in new list but not in old)
+            foreach (NexusPlayer added in newPlayers.Where(p => !oldIds.Contains(p.ConnectionId)))
+            {
+                Debug.Log($"[LocalRoomManager] Player joined (synced): {added.DisplayName} (conn: {added.ConnectionId})");
+                OnPlayerJoined?.Invoke(added);
+            }
+
+            // Replace local list
+            _players.Clear();
+            _players.AddRange(newPlayers);
+
+            if (_currentRoom != null)
+            {
+                _currentRoom.CurrentPlayers = _players.Count;
+            }
         }
     }
 }
