@@ -1,3 +1,4 @@
+using Mirror;
 using Nexus.Networking.Local;
 using Nexus.Networking.VR;
 using Nexus.Networking.VR.Calibration;
@@ -87,7 +88,8 @@ namespace Nexus.Networking.Core
             // Wire VR player manager
             var vrPlayerManager = GetOrAddComponent<NexusVRPlayerManager>();
             vrPlayerManager.TrackingProvider = ResolveTrackingProvider();
-            vrPlayerManager.Initialize(roomManager, config);
+            var playerTemplate = CreateVRPlayerTemplate();
+            vrPlayerManager.Initialize(roomManager, config, playerTemplate);
 
             // Wire spatial calibration manager
             var calibrationManager = GetOrAddComponent<SpatialCalibrationManager>();
@@ -95,6 +97,16 @@ namespace Nexus.Networking.Core
             calibrationManager.Initialize(calibrationProvider, vrPlayerManager);
 
             Debug.Log("[NexusBootstrap] Local mode initialized.");
+        }
+
+        private static GameObject CreateVRPlayerTemplate()
+        {
+            var template = new GameObject("NexusVRPlayerTemplate");
+            template.SetActive(false);
+            template.AddComponent<NetworkIdentity>();
+            template.AddComponent<NexusVRPlayer>();
+            template.hideFlags = HideFlags.HideAndDontSave;
+            return template;
         }
 
         private IVRTrackingProvider ResolveTrackingProvider()

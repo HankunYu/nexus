@@ -25,7 +25,10 @@ namespace Nexus.Networking.Tests
             yield return BaseSetUp();
 
             _vrManager = _rootObject.AddComponent<NexusVRPlayerManager>();
-            _vrManager.Initialize(_roomManager, _config);
+            var template = new GameObject("TestVRPlayerTemplate");
+            template.SetActive(false);
+            template.AddComponent<NexusVRPlayer>();
+            _vrManager.Initialize(_roomManager, _config, template);
 
             _mockTracking = new MockTrackingProvider();
             _mockTracking.NextPose = new VRPose

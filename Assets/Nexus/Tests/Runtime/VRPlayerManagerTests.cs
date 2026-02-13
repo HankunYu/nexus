@@ -26,7 +26,12 @@ namespace Nexus.Networking.Tests
                 RightHand = new Pose(Vector3.right * 0.3f, Quaternion.identity)
             };
 
-            _vrManager.Initialize(_roomManager, _session.Config);
+            // Create template for tests (no NetworkIdentity needed for local-only test path)
+            var template = new GameObject("TestVRPlayerTemplate");
+            template.SetActive(false);
+            template.AddComponent<NexusVRPlayer>();
+
+            _vrManager.Initialize(_roomManager, _session.Config, template);
             _vrManager.TrackingProvider = _mockProvider;
         }
 

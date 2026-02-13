@@ -66,9 +66,9 @@ namespace Nexus.Networking.VR
         // Unity callbacks
         private void Awake()
         {
-            _head = CreateChildTransform("Head");
-            _leftHand = CreateChildTransform("LeftHand");
-            _rightHand = CreateChildTransform("RightHand");
+            _head = FindOrCreateChild("Head");
+            _leftHand = FindOrCreateChild("LeftHand");
+            _rightHand = FindOrCreateChild("RightHand");
         }
 
         private void Update()
@@ -196,8 +196,14 @@ namespace Nexus.Networking.VR
             SetTargetPose(pose, _interpolationSpeed);
         }
 
-        private Transform CreateChildTransform(string childName)
+        private Transform FindOrCreateChild(string childName)
         {
+            var existing = transform.Find(childName);
+            if (existing != null)
+            {
+                return existing;
+            }
+
             var child = new GameObject(childName).transform;
             child.SetParent(transform, false);
             return child;

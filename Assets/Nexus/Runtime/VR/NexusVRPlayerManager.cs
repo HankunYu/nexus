@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using Mirror;
 using Nexus.Networking.Core;
@@ -10,7 +9,8 @@ namespace Nexus.Networking.VR
     /// <summary>
     /// Manages VR player lifecycle: spawn/despawn NexusVRPlayer instances
     /// in response to room events. Bridges NexusSession with VR sync.
-    /// Uses Mirror's RegisterSpawnHandler for runtime network object spawning.
+    /// Uses an inactive template GameObject + Mirror's AddPlayerForConnection
+    /// for proper NetworkIdentity initialization.
     /// </summary>
     public class NexusVRPlayerManager : MonoBehaviour
     {
@@ -20,6 +20,7 @@ namespace Nexus.Networking.VR
         // Private fields
         private INexusRoomManager _roomManager;
         private NexusConfig _config;
+        private GameObject _playerTemplate;
         private NexusVRPlayer _localPlayer;
         private readonly List<NexusVRPlayer> _remotePlayers = new List<NexusVRPlayer>();
         private readonly Dictionary<int, NexusVRPlayer> _playersByConnectionId = new Dictionary<int, NexusVRPlayer>();
@@ -50,13 +51,19 @@ namespace Nexus.Networking.VR
                 NetworkClient.UnregisterSpawnHandler(VRPlayerAssetId);
                 _spawnHandlersRegistered = false;
             }
+
+            if (_playerTemplate != null)
+            {
+                Destroy(_playerTemplate);
+            }
         }
 
         // Public methods
-        public void Initialize(INexusRoomManager roomManager, NexusConfig config)
+        public void Initialize(INexusRoomManager roomManager, NexusConfig config, GameObject playerTemplate)
         {
             _roomManager = roomManager;
             _config = config;
+            _playerTemplate = playerTemplate;
 
             _roomManager.OnPlayerJoined += HandlePlayerJoined;
             _roomManager.OnPlayerLeft += HandlePlayerLeft;
@@ -70,6 +77,11 @@ namespace Nexus.Networking.VR
         /// </summary>
         public void RegisterLocalPlayer(NexusVRPlayer player)
         {
+            if (_localPlayer == player)
+            {
+                return;
+            }
+
             _localPlayer = player;
             player.TrackingProvider = TrackingProvider;
             player.CustomState = CustomState;
@@ -133,10 +145,11 @@ namespace Nexus.Networking.VR
 
         private GameObject OnClientSpawnHandler(SpawnMessage msg)
         {
-            var playerObj = new GameObject($"VRPlayer_Remote_{msg.netId}");
-            playerObj.transform.SetParent(transform, false);
-            playerObj.AddComponent<NexusVRPlayer>();
-            return playerObj;
+            var instance = Instantiate(_playerTemplate);
+            instance.SetActive(true);
+            instance.name = $"VRPlayer_Remote_{msg.netId}";
+            instance.transform.SetParent(transform, false);
+            return instance;
         }
 
         private void OnClientUnspawnHandler(GameObject spawned)
@@ -178,41 +191,18 @@ namespace Nexus.Networking.VR
                 ownerConn = NetworkServer.localConnection;
             }
 
-            // Mirror requires conn.isReady before ShowForConnection sends SpawnMessage.
-            // In host mode, localConnection becomes ready next frame (QueueConnectedEvent).
-            // Defer spawn until connection is ready to avoid silent drop.
-            if (ownerConn != null && !ownerConn.isReady)
+            if (ownerConn == null)
             {
-                StartCoroutine(SpawnWhenReady(player, ownerConn));
+                Debug.LogWarning($"[NexusVRPlayerManager] No connection found for {player.DisplayName} (conn={player.ConnectionId})");
                 return;
             }
 
-            DoSpawn(player, ownerConn);
-        }
+            var instance = Instantiate(_playerTemplate);
+            instance.SetActive(true);
+            instance.name = $"VRPlayer_{player.DisplayName}";
+            instance.transform.SetParent(transform, false);
 
-        private IEnumerator SpawnWhenReady(NexusPlayer player, NetworkConnectionToClient ownerConn)
-        {
-            Debug.Log($"[NexusVRPlayerManager] Waiting for connection ready: {player.DisplayName} (conn={player.ConnectionId})");
-
-            while (!ownerConn.isReady)
-            {
-                yield return null;
-            }
-
-            DoSpawn(player, ownerConn);
-        }
-
-        private void DoSpawn(NexusPlayer player, NetworkConnectionToClient ownerConn)
-        {
-            var playerObj = new GameObject($"VRPlayer_{player.DisplayName}");
-            playerObj.transform.SetParent(transform, false);
-
-            playerObj.AddComponent<NetworkIdentity>();
-            playerObj.AddComponent<NexusVRPlayer>();
-
-            // Use the 3-arg overload: internally sets identity.assetId (internal setter)
-            NetworkServer.Spawn(playerObj, VRPlayerAssetId, ownerConn);
-
+            NetworkServer.AddPlayerForConnection(ownerConn, instance, VRPlayerAssetId);
             Debug.Log($"[NexusVRPlayerManager] Server spawned VR player: {player.DisplayName} (conn={player.ConnectionId})");
         }
 
