@@ -108,8 +108,8 @@ namespace Nexus.Networking.Local
             SetState(RoomState.Joining);
 
             _currentRoom = room;
-            _transport.StartClient(room.HostAddress, room.Port);
             RegisterNetworkHandlers();
+            _transport.StartClient(room.HostAddress, room.Port);
 
             SetState(RoomState.InRoom);
 
@@ -203,10 +203,10 @@ namespace Nexus.Networking.Local
                 return;
             }
 
-            if (NetworkClient.active)
-            {
-                NetworkClient.RegisterHandler<PlayerListMessage>(HandlePlayerListReceived);
-            }
+            // Register handler unconditionally — Mirror allows pre-registering
+            // before the client is fully connected. This avoids missing the
+            // first PlayerListMessage when StartClient() connects asynchronously.
+            NetworkClient.RegisterHandler<PlayerListMessage>(HandlePlayerListReceived);
 
             _networkHandlersRegistered = true;
             Debug.Log("[LocalRoomManager] Network handlers registered.");
@@ -275,30 +275,34 @@ namespace Nexus.Networking.Local
                 });
             }
 
-            // Diff: find removed players (in old list but not in new)
+            // Diff: compute removed and added before modifying the list
             var oldIds = _players.Select(p => p.ConnectionId).ToHashSet();
             var newIds = newPlayers.Select(p => p.ConnectionId).ToHashSet();
 
-            foreach (NexusPlayer removed in _players.Where(p => !newIds.Contains(p.ConnectionId)))
+            var removedPlayers = _players.Where(p => !newIds.Contains(p.ConnectionId)).ToList();
+            var addedPlayers = newPlayers.Where(p => !oldIds.Contains(p.ConnectionId)).ToList();
+
+            // Fire removal events (subscribers may read Players, so fire before replace)
+            foreach (NexusPlayer removed in removedPlayers)
             {
                 Debug.Log($"[LocalRoomManager] Player left (synced): {removed.DisplayName} (conn: {removed.ConnectionId})");
                 OnPlayerLeft?.Invoke(removed);
             }
 
-            // Diff: find added players (in new list but not in old)
-            foreach (NexusPlayer added in newPlayers.Where(p => !oldIds.Contains(p.ConnectionId)))
-            {
-                Debug.Log($"[LocalRoomManager] Player joined (synced): {added.DisplayName} (conn: {added.ConnectionId})");
-                OnPlayerJoined?.Invoke(added);
-            }
-
-            // Replace local list
+            // Replace local list so subscribers see the up-to-date list on join events
             _players.Clear();
             _players.AddRange(newPlayers);
 
             if (_currentRoom != null)
             {
                 _currentRoom.CurrentPlayers = _players.Count;
+            }
+
+            // Fire join events after list is updated
+            foreach (NexusPlayer added in addedPlayers)
+            {
+                Debug.Log($"[LocalRoomManager] Player joined (synced): {added.DisplayName} (conn: {added.ConnectionId})");
+                OnPlayerJoined?.Invoke(added);
             }
         }
     }
